@@ -1,0 +1,11 @@
+{
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "${workspaceFolder:mastering Django REST Framework (DRF)}/academy/masterdrf_db.sqlite3",
+            "name": "mastering_django_db"
+        }
+    ]
+}
