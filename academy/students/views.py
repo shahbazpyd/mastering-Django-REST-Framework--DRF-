@@ -132,7 +132,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .tasks import send_welcome_email_task, send_student_created_ws_task#, generate_report_task
+from .tasks import send_welcome_email_task, send_student_created_ws_task, generate_report_task
 from django.conf import settings
 # print("EMAIL_BACKEND:", settings.EMAIL_BACKEND)
 
@@ -162,8 +162,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     ordering = ['name']  # Default sort
 
     # This method is called when we create a new object
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+    # def perform_create(self, serializer):
+    #     serializer.save(owner=self.request.user)
         # Automatically set the 'created_by' field to the current user
         # serializer.save(created_by=self.request.user)
 
@@ -175,18 +175,18 @@ class StudentViewSet(viewsets.ModelViewSet):
     #     student = serializer.save()
     #     print(f"[ViewSet] {self.request.user} updated {student.id}")
 
-    # def perform_create(self, serializer):
-    #     student = serializer.save(owner=self.request.user)
+    def perform_create(self, serializer):
+        student = serializer.save(owner=self.request.user)
 
-    #     user = self.request.user if self.request.user.is_authenticated else None
-    #     user_id = user.id if user else None
+        user = self.request.user if self.request.user.is_authenticated else None
+        user_id = user.id if user else None
 
     #     # async email
-    #     send_welcome_email_task.delay(
-    #         student_id=student.id,
-    #         email=student.email,
-    #         name=student.name,
-    #     )
+        send_welcome_email_task.delay(
+            student_id=student.id,
+            email=student.email,
+            name=student.name,
+        )
 
     #     # async websocket notification
     #     send_student_created_ws_task.delay(
@@ -214,22 +214,22 @@ class StudentViewSet(viewsets.ModelViewSet):
     #         'email_content': email_content[:50] + '...'
     #     })
 
-    @action(detail=True, methods=['post'])
-    def send_welcome_email(self, request, pk=None):
-        print("send_welcome_email called")
-        print("EMAIL_BACKEND:", settings.EMAIL_BACKEND)
-        student = self.get_object()
+    # @action(detail=True, methods=['post'])
+    # def send_welcome_email(self, request, pk=None):
+    #     print("send_welcome_email called")
+    #     print("EMAIL_BACKEND:", settings.EMAIL_BACKEND)
+    #     student = self.get_object()
 
-        # Async call: returns immediately
-        print(student.name, student.email)
-        task = send_welcome_email_task.delay(student.name, student.email)
-        print("Task ID:", task.id)
-        return Response({
-            'message': 'Welcome email scheduled!',
-            'student': student.name,
-            'student_email': student.email,
-            'task_id': task.id,
-        })
+    #     # Async call: returns immediately
+    #     print(student.name, student.email)
+    #     task = send_welcome_email_task.delay(student.name, student.email)
+    #     print("Task ID:", task.id)
+    #     return Response({
+    #         'message': 'Welcome email scheduled!',
+    #         'student': student.name,
+    #         'student_email': student.email,
+    #         'task_id': task.id,
+    #     })
 
 
     # @action(detail=True, methods=['post'])

@@ -265,3 +265,12 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 #         "schedule": crontab(minute="*/5"),  # every 5 minutes
 #     },
 # }
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "heartbeat-every-minute": {
+        "task": "students.tasks.heartbeat_task",
+        "schedule": crontab(minute="*/1"),  # every minute
+    },
+}

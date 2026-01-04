@@ -35,10 +35,10 @@
 # #     print(f">>> REPORT READY for student {student_id}")
 # #     return f"Report generated for student {student_id}"
 
-# from celery import shared_task
-# from asgiref.sync import async_to_sync
-# from channels.layers import get_channel_layer
-# import time
+from celery import shared_task
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+import time
 
 
 # @shared_task
@@ -60,6 +60,38 @@
 #         )
 
 #     return f"Report generated for student {student_id}"
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+@shared_task
+def generate_report_task(student_id, user_id):
+    # ... heavy work ...
+    print(f">>> GENERATING REPORT for student {student_id}")
+    time.sleep(5)
+    print(f">>> REPORT READY for student {student_id}")
+
+    channel_layer = get_channel_layer()
+    if channel_layer is None:
+        print(">>> NO CHANNEL LAYER FOUND IN CELERY")
+        return
+
+    group_name = f"user_{user_id}"
+    print(">>> BEFORE GROUP_SEND")
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            "type": "notification",  # must match consumer method name
+            "payload": {
+                "kind": "student_report_ready",
+                "student_id": student_id,
+                "message": f"Report for student {student_id} is ready",
+            },
+        },
+    )
+    print(">>> AFTER GROUP_SEND")
+
+    print(f">>> GROUP_SEND CALLED for {group_name}")
+
 
 
 from celery import shared_task
@@ -101,3 +133,7 @@ def send_student_created_ws_task(student_id, user_id):
         },
     )
 
+
+@shared_task
+def heartbeat_task():
+    print(">>> CELERY BEAT HEARTBEAT")
