@@ -417,3 +417,9 @@ class CourseViewSet(ModelViewSet):
     def perform_create(self, serializer):
         # Attach owner when creating
         serializer.save(owner=self.request.user)
+
+
+from django.http import JsonResponse
+
+def health(request):
+    return JsonResponse({"status": "ok"})

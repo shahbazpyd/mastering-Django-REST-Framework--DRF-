@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from students.views_api import StudentListCreateAPIView, StudentListCreateGenericAPIView
 from .views import StudentDetailAPIView, StudentListAPIView, StudentViewSet, student_detail, student_list, TaskStatusAPIView, CourseViewSet
-
+from .views import health
 
 # Create a router and register our ViewSet
 router = DefaultRouter()
@@ -31,5 +31,6 @@ urlpatterns = [
 
     path("students-api-view/", StudentListCreateAPIView.as_view(), name="students-api-view"),
     path("students-generic/", StudentListCreateGenericAPIView.as_view(), name="students-generic"),
+    
 ]
 urlpatterns += router.urls

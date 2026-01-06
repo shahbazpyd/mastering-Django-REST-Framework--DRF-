@@ -81,12 +81,33 @@ ASGI_APPLICATION = "academy.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "masterdrf_db.sqlite3",
+#     }
+# }
+import os
+
+DB_SQLITE = "sqlite"
+DB_POSTGRESQL = "postgresql"
+
+DATABASES_ALL = {
+    DB_SQLITE: {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "masterdrf_db.sqlite3",
-    }
+        "NAME": BASE_DIR / "db.sqlite3",
+    },
+    DB_POSTGRESQL: {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB", "academy"),
+        "USER": os.getenv("POSTGRES_USER", "academy"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academy"),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": int(os.getenv("POSTGRES_PORT", "5432")),
+    },
 }
+
+DATABASES = {"default": DATABASES_ALL[os.getenv("DJANGO_DB", DB_SQLITE)]}
 
 
 # Password validation
@@ -124,6 +145,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 
 
 
@@ -245,12 +268,12 @@ CHANNEL_LAYERS = {
 # DEFAULT_FROM_EMAIL = 'no-reply@academy.local'
 #===================================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'sbzalam0099@gmail.com'          # your Gmail
-EMAIL_HOST_PASSWORD = 'idluwlcsaxharyzi'   # NOT your normal password
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'sbzalam0099@gmail.com')          # your Gmail
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'idluwlcsaxharyzi')   # NOT your normal password
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
