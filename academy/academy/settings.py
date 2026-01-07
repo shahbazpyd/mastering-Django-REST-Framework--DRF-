@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     'rest_framework',
     'rest_framework.authtoken',
     'students', 
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -297,3 +299,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/1"),  # every minute
     },
 }
+
+
+# CORS settings (development)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React dev server
+    "http://127.0.0.1:3000",
+]
+
+# For Docker production preview
+CORS_ALLOW_ALL_ORIGINS = True  # TEMP: only for dev, remove in prod
