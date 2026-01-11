@@ -1,8 +1,6 @@
 import axios from "axios";
 
-// const API_BASE = process.env.NODE_ENV === "production" 
-//   ? "https://your-railway-app.up.railway.app/api"  // Update after deploy
-//   : "http://localhost:8000/api";
+
 const API_BASE = "/api";
 
 const api = axios.create({ baseURL: API_BASE });
