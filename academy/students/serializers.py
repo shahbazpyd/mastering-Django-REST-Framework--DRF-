@@ -95,7 +95,7 @@ class StudentSerializer(serializers.ModelSerializer):
 # )
     class Meta:
         model = Student
-        fields = ['id', 'name', 'age', 'email']
+        fields = '__all__'
 
     def create(self, validated_data):
         print("create called")

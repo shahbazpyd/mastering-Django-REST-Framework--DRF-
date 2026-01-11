@@ -138,14 +138,14 @@ from django.conf import settings
 
 
 class StudentPagination(PageNumberPagination):
-    page_size = 3  # Override: Show only 3 per page for this ViewSet
+    page_size = 5  # Override: Show only 5 per page for this ViewSet
     page_size_query_param = 'page_size'  # Allow ?page_size=10 in URL
     max_page_size = 10  # Prevent abuse: max 10 per page
 
 class StudentViewSet(viewsets.ModelViewSet):
     filterset_class = StudentFilter  # Use custom filters
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    queryset = Student.objects.all()
+    queryset = Student.objects.all().order_by('-created_at')
     serializer_class = StudentSerializer
     # authentication_classes = [TokenAuthentication]
     pagination_class = StudentPagination  # Custom pagination

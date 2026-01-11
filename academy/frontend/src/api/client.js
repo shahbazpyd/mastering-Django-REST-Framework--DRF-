@@ -1,0 +1,28 @@
+import axios from "axios";
+
+// const API_BASE = process.env.NODE_ENV === "production" 
+//   ? "https://your-railway-app.up.railway.app/api"  // Update after deploy
+//   : "http://localhost:8000/api";
+const API_BASE = "/api";
+
+const api = axios.create({ baseURL: API_BASE });
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+export const authAPI = {
+  login: (data) => api.post("/token/", data),
+};
+
+export const studentsAPI = {
+  list: () => api.get("/viewset-students/"),
+  create: (data) => api.post("/viewset-students/", data),
+  update: (id, data) => api.patch(`/viewset-students/${id}/`, data),
+  delete: (id) => api.delete(`/viewset-students/${id}/`),
+  report: (id) => api.post(`/viewset-students/${id}/generate_report/`),  // Celery task
+};
+
+export default api;

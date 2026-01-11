@@ -13,6 +13,7 @@ class Student(models.Model):
     name = models.CharField(max_length=100)
     age = models.IntegerField()
     email = models.EmailField(unique=True)
+    course = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Add this link to the User
