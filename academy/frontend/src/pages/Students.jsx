@@ -10,10 +10,9 @@ export default function Students() {
   const [formData, setFormData] = useState({ name: "", age: "", email: "", course: "" });
   const [search, setSearch] = useState("");
   const [reportLoading, setReportLoading] = useState({});
-  
-  // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage] = useState(5);
+  const [apiDebug, setApiDebug] = useState(""); // 🔍 NEW: Debug panel
 
   useEffect(() => {
     fetchStudents();
@@ -22,37 +21,86 @@ export default function Students() {
   const fetchStudents = async () => {
     try {
       setLoading(true);
+      console.log("🚀 Calling studentsAPI.list()...");
+      
       const res = await studentsAPI.list();
-      let studentsList = res.data.results || res.data || [];
-      console.log("Fetched:", studentsList);
-      setStudents(studentsList);
-      setCurrentPage(1); // Reset to page 1 on refresh
+      
+      // 🔍 FULL DEBUG LOGS
+      console.log("📡 FULL Response:", res);
+      console.log("📦 res.status:", res.status);
+      console.log("📦 res.data:", res.data);
+      console.log("🔍 Content-Type:", res.headers?.['content-type']);
+      
+      setApiDebug(`Status: ${res.status}\nType: ${res.headers?.['content-type'] || 'unknown'}\nData: ${typeof res.data} (${JSON.stringify(res.data?.slice ? res.data.slice(0, 200) : res.data, null, 2)})`);
+
+      // 🔥 BULLETPROOF: Check if it's actually JSON data
+      if (!res.data || typeof res.data !== 'object') {
+        console.error("💥 API returned NON-JSON:", res.data);
+        setStudents([]);
+        return;
+      }
+
+      // 🔥 EXTRACT ARRAY SAFELY
+      let studentsList = [];
+      if (res.data.results && Array.isArray(res.data.results)) {
+        studentsList = res.data.results;
+        console.log("✅ Using paginated results array:", studentsList.length);
+      } else if (Array.isArray(res.data)) {
+        studentsList = res.data;
+        console.log("✅ Using direct array:", studentsList.length);
+      } else {
+        console.error("❌ No valid students array found in response");
+        console.log("Available keys:", Object.keys(res.data || {}));
+        studentsList = [];
+      }
+
+      // 🔥 VALIDATE EACH STUDENT OBJECT
+      const validStudents = studentsList.filter(student => 
+        student && 
+        typeof student === 'object' && 
+        student.id !== undefined
+      );
+
+      console.log("✅ Final valid students:", validStudents.length);
+      setStudents(validStudents);
+      setCurrentPage(1);
+      
     } catch (error) {
-      console.error("Fetch failed:", error);
+      console.error("💥 Fetch FAILED:", error);
+      console.error("💥 Error response:", error.response?.data);
+      console.error("💥 Error status:", error.response?.status);
+      setApiDebug(`ERROR ${error.response?.status}: ${error.response?.statusText || error.message}`);
       setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ FIXED: Pagination logic INSIDE useMemo (reactive)
+  // 🔥 BULLETPROOF PAGINATION - Never crashes
   const pagination = useMemo(() => {
+    // ✅ ENSURE students is ALWAYS array
+    const safeStudents = Array.isArray(students) ? students : [];
+    
     const indexOfLastStudent = currentPage * studentsPerPage;
     const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
     
-    const filteredStudents = students.filter(student =>
-      student.name.toLowerCase().includes(search.toLowerCase()) ||
-      student.email.toLowerCase().includes(search.toLowerCase())
-    );
+    // 🔥 SAFE FILTER - validates each student has required props
+    const filteredStudents = safeStudents.filter(student => {
+      if (!student || typeof student !== 'object') return false;
+      const name = (student.name || '').toLowerCase();
+      const email = (student.email || '').toLowerCase();
+      return name.includes(search.toLowerCase()) || email.includes(search.toLowerCase());
+    });
     
     const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
     const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
     
-    console.log("DEBUG - Students:", students.length, "Filtered:", filteredStudents.length, "Pages:", totalPages, "CurrentPage:", currentPage);
+    console.log("DEBUG - Students:", safeStudents.length, "Filtered:", filteredStudents.length, "Pages:", totalPages, "CurrentPage:", currentPage);
     
     return { filteredStudents, currentStudents, totalPages, indexOfFirstStudent, indexOfLastStudent };
   }, [students, search, currentPage, studentsPerPage]);
 
+  // ... rest of your functions unchanged (saveStudent, deleteStudent, etc.) ...
   const paginate = useCallback((pageNumber) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -84,7 +132,6 @@ export default function Students() {
   };
 
   const deleteStudent = async (id) => {
-    // eslint-disable-next-line no-restricted-globals
     if (confirm("Delete this student?")) {
       try {
         await studentsAPI.delete(id);
@@ -122,6 +169,12 @@ export default function Students() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
+      {/* 🔍 DEBUG PANEL - REMOVE IN PRODUCTION */}
+      <details className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+        <summary className="cursor-pointer font-semibold text-yellow-800">🔍 API Debug Info</summary>
+        <pre className="text-xs mt-2 p-3 bg-yellow-100 rounded text-yellow-900 overflow-auto max-h-40">{apiDebug}</pre>
+      </details>
+
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Students</h1>
@@ -150,7 +203,7 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Form - UNCHANGED */}
       {showForm && (
         <form onSubmit={saveStudent} className="bg-white p-8 rounded-2xl shadow-xl max-w-2xl mb-8">
           <h2 className="text-2xl font-bold mb-6">{editingId ? "Edit Student" : "Add New Student"}</h2>
@@ -218,7 +271,7 @@ export default function Students() {
         </form>
       )}
 
-      {/* Table + Pagination */}
+      {/* Table + Pagination - UNCHANGED */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-blue-600">
           <div className="flex items-center justify-between">
@@ -304,7 +357,6 @@ export default function Students() {
               </table>
             </div>
 
-            {/* ✅ FIXED: Pagination - Only show when needed */}
             {totalPages > 1 && (
               <div className="px-6 py-4 bg-gray-50 border-t">
                 <div className="flex items-center justify-between">
