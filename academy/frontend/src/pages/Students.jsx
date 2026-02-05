@@ -1,411 +1,72 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { studentsAPI } from "../api/client";
-import { Plus, Edit, Trash2, FileText, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { studentsAPI } from '../api/client';
 
 export default function Students() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: "", age: "", email: "", course: "" });
-  const [search, setSearch] = useState("");
-  const [reportLoading, setReportLoading] = useState({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const [studentsPerPage] = useState(5);
-  const [apiDebug, setApiDebug] = useState(""); // 🔍 NEW: Debug panel
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [page]);
 
   const fetchStudents = async () => {
     try {
-      setLoading(true);
-      console.log("🚀 Calling studentsAPI.list()...");
-      
-      const res = await studentsAPI.list();
-      
-      // 🔍 FULL DEBUG LOGS
-      console.log("📡 FULL Response:", res);
-      console.log("📦 res.status:", res.status);
-      console.log("📦 res.data:", res.data);
-      console.log("🔍 Content-Type:", res.headers?.['content-type']);
-      
-      setApiDebug(`Status: ${res.status}\nType: ${res.headers?.['content-type'] || 'unknown'}\nData: ${typeof res.data} (${JSON.stringify(res.data?.slice ? res.data.slice(0, 200) : res.data, null, 2)})`);
-
-      // 🔥 BULLETPROOF: Check if it's actually JSON data
-      if (!res.data || typeof res.data !== 'object') {
-        console.error("💥 API returned NON-JSON:", res.data);
-        setStudents([]);
-        return;
-      }
-
-      // 🔥 EXTRACT ARRAY SAFELY
-      let studentsList = [];
-      if (res.data.results && Array.isArray(res.data.results)) {
-        studentsList = res.data.results;
-        console.log("✅ Using paginated results array:", studentsList.length);
-      } else if (Array.isArray(res.data)) {
-        studentsList = res.data;
-        console.log("✅ Using direct array:", studentsList.length);
-      } else {
-        console.error("❌ No valid students array found in response");
-        console.log("Available keys:", Object.keys(res.data || {}));
-        studentsList = [];
-      }
-
-      // 🔥 VALIDATE EACH STUDENT OBJECT
-      const validStudents = studentsList.filter(student => 
-        student && 
-        typeof student === 'object' && 
-        student.id !== undefined
-      );
-
-      console.log("✅ Final valid students:", validStudents.length);
-      setStudents(validStudents);
-      setCurrentPage(1);
-      
+      const response = await studentsAPI.list({ page });
+      setStudents(response.data.results || []);
     } catch (error) {
-      console.error("💥 Fetch FAILED:", error);
-      console.error("💥 Error response:", error.response?.data);
-      console.error("💥 Error status:", error.response?.status);
-      setApiDebug(`ERROR ${error.response?.status}: ${error.response?.statusText || error.message}`);
-      setStudents([]);
+      console.error('Error fetching students:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔥 BULLETPROOF PAGINATION - Never crashes
-  const pagination = useMemo(() => {
-    // ✅ ENSURE students is ALWAYS array
-    const safeStudents = Array.isArray(students) ? students : [];
-    
-    const indexOfLastStudent = currentPage * studentsPerPage;
-    const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-    
-    // 🔥 SAFE FILTER - validates each student has required props
-    const filteredStudents = safeStudents.filter(student => {
-      if (!student || typeof student !== 'object') return false;
-      const name = (student.name || '').toLowerCase();
-      const email = (student.email || '').toLowerCase();
-      return name.includes(search.toLowerCase()) || email.includes(search.toLowerCase());
-    });
-    
-    const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
-    const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
-    
-    console.log("DEBUG - Students:", safeStudents.length, "Filtered:", filteredStudents.length, "Pages:", totalPages, "CurrentPage:", currentPage);
-    
-    return { filteredStudents, currentStudents, totalPages, indexOfFirstStudent, indexOfLastStudent };
-  }, [students, search, currentPage, studentsPerPage]);
-
-  // ... rest of your functions unchanged (saveStudent, deleteStudent, etc.) ...
-  const paginate = useCallback((pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const saveStudent = async (e) => {
-    e.preventDefault();
-    const dataToSend = {
-      name: formData.name.trim(),
-      age: parseInt(formData.age) || 0,
-      email: formData.email.trim(),
-      course: formData.course.trim() || null,
-    };
-    
-    try {
-      if (editingId) {
-        await studentsAPI.update(editingId, dataToSend);
-      } else {
-        await studentsAPI.create(dataToSend);
-      }
-      fetchStudents();
-      setFormData({ name: "", age: "", email: "", course: "" });
-      setEditingId(null);
-      setShowForm(false);
-      setCurrentPage(1);
-    } catch (error) {
-      console.error("Save failed:", error.response?.data);
-    }
-  };
-
-  const deleteStudent = async (id) => {
-    if (confirm("Delete this student?")) {
-      try {
-        await studentsAPI.delete(id);
-        fetchStudents();
-      } catch (error) {
-        console.error("Delete failed:", error);
-      }
-    }
-  };
-
-  const generateReport = async (id) => {
-    try {
-      setReportLoading(prev => ({ ...prev, [id]: true }));
-      await studentsAPI.report(id);
-      alert("Report generating... check Flower dashboard!");
-    } catch (error) {
-      console.error("Report failed:", error);
-    } finally {
-      setReportLoading(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  const editStudent = (student) => {
-    setEditingId(student.id);
-    setFormData({
-      name: student.name,
-      age: student.age,
-      email: student.email,
-      course: student.course || "",
-    });
-    setShowForm(true);
-  };
-
-  const { filteredStudents, currentStudents, totalPages, indexOfFirstStudent, indexOfLastStudent } = pagination;
+  if (loading) return <div className="text-center py-12">Loading students...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      {/* 🔍 DEBUG PANEL - REMOVE IN PRODUCTION */}
-      <details className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-        <summary className="cursor-pointer font-semibold text-yellow-800">🔍 API Debug Info</summary>
-        <pre className="text-xs mt-2 p-3 bg-yellow-100 rounded text-yellow-900 overflow-auto max-h-40">{apiDebug}</pre>
-      </details>
-
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Students</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 shadow-lg flex items-center gap-2 transition-all"
-        >
-          <Plus size={20} /> New Student
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="mb-8">
-        <div className="relative max-w-md">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search students..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Form - UNCHANGED */}
-      {showForm && (
-        <form onSubmit={saveStudent} className="bg-white p-8 rounded-2xl shadow-xl max-w-2xl mb-8">
-          <h2 className="text-2xl font-bold mb-6">{editingId ? "Edit Student" : "Add New Student"}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-              <input
-                type="number"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
-              <input
-                type="text"
-                value={formData.course}
-                onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                placeholder="e.g. Python Bootcamp"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-          <div className="flex gap-4 mt-8">
-            <button
-              type="submit"
-              className="bg-green-600 text-white px-8 py-3 rounded-xl hover:bg-green-700 shadow-lg font-medium transition-all"
-            >
-              {editingId ? "Update Student" : "Create Student"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-                setFormData({ name: "", age: "", email: "", course: "" });
-              }}
-              className="bg-gray-500 text-white px-8 py-3 rounded-xl hover:bg-gray-600 transition-all"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Table + Pagination - UNCHANGED */}
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-blue-600">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <RefreshCw
-                onClick={fetchStudents}
-                className={`w-5 h-5 cursor-pointer ${loading ? 'animate-spin text-white' : 'text-blue-100 hover:text-white'}`}
-              />
-              <h3 className="text-xl font-bold text-white">
-                Showing {currentStudents.length} of {filteredStudents.length} students
-              </h3>
-            </div>
-            <span className="text-blue-100 text-sm font-medium">
-              Page {currentPage} of {totalPages}
-            </span>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="p-12 text-center text-gray-500">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
-            Loading students...
-          </div>
-        ) : filteredStudents.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            No students found. <button onClick={() => setShowForm(true)} className="text-blue-600 hover:underline font-medium">Create one!</button>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Age</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Course</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {currentStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{student.age}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{student.email}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                          {student.course || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => editStudent(student)}
-                          className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-all"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => deleteStudent(student.id)}
-                          className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => generateReport(student.id)}
-                          disabled={reportLoading[student.id]}
-                          className="text-purple-600 hover:text-purple-900 p-2 rounded-lg hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                          title="Generate Report"
-                        >
-                          {reportLoading[student.id] ? (
-                            <RefreshCw size={16} className="animate-spin" />
-                          ) : (
-                            <FileText size={16} />
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="px-6 py-4 bg-gray-50 border-t">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{indexOfFirstStudent + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(indexOfLastStudent, filteredStudents.length)}</span> of{' '}
-                    <span className="font-medium">{filteredStudents.length}</span> results
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">Students</h1>
+      
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="divide-y">
+          {students.length > 0 ? (
+            students.map((student) => (
+              <div key={student.id} className="p-6 hover:bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">{student.name}</h3>
+                    <p className="text-gray-600">{student.email}</p>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => paginate(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                    >
-                      <ChevronLeft size={18} />
-                      Previous
-                    </button>
-                    
-                    <div className="flex gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                        <button
-                          key={number}
-                          onClick={() => paginate(number)}
-                          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all shadow-sm ${
-                            currentPage === number
-                              ? 'bg-blue-600 text-white shadow-md'
-                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:shadow-md hover:border-gray-400'
-                          }`}
-                        >
-                          {number}
-                        </button>
-                      ))}
-                    </div>
-                    
-                    <button
-                      onClick={() => paginate(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                    >
-                      Next
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
+                  <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                    Age {student.age}
+                  </span>
                 </div>
               </div>
-            )}
-          </>
-        )}
+            ))
+          ) : (
+            <div className="p-12 text-center text-gray-500">
+              No students found
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Basic Pagination */}
+      <div className="flex justify-center mt-8 space-x-2">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span className="px-4 py-2 font-medium">Page {page}</span>
+        <button
+          onClick={() => setPage(p => p + 1)}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

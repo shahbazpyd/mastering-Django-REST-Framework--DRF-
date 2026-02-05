@@ -109,9 +109,9 @@ services:
       dockerfile: Dockerfile.react
     ports:
       - "3000:80"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
   static_volume:
