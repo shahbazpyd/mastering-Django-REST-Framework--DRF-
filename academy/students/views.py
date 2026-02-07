@@ -38,7 +38,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from .filters import StudentFilter
 from .models import Student
-from .serializers import StudentSerializer
+from .serializers import EnrollmentCreateSerializer, StudentSerializer
+from students import permissions
 # from .permissions import IsOwnerOrReadOnly
 
 # ==========================================
@@ -389,37 +390,87 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Course
 from .serializers import CourseSerializer
 from .permissions import IsAdminOrReadOnly, IsCourseOwnerOrStaff
+from rest_framework import permissions  # ← ADD THIS IMPORT
+from .permissions import IsAdminOrReadOnly, IsCourseOwnerOrStaff
 
 
 class CourseViewSet(ModelViewSet):
-    queryset = Course.objects.all()
+    queryset = Course.objects.all().order_by('-created_at')
     serializer_class = CourseSerializer
 
     def get_permissions(self):
         """
-        Different rules per action:
-
-        - list/retrieve: any authenticated user (read-only)
-        - create: only staff/admin
-        - update/partial_update/destroy: owner or staff
+        Course browsing: ANYONE authenticated can LIST/RETRIEVE
+        Course creation/editing: Staff/Admin only
         """
         if self.action in ["list", "retrieve"]:
-            perms = [IsAuthenticated, IsAdminOrReadOnly]
+            # Students can browse published courses ✅
+            return [permissions.IsAuthenticated()]  
         elif self.action == "create":
-            perms = [IsAuthenticated, IsAdminOrReadOnly]
+            # Only staff can create courses
+            return [IsAdminOrReadOnly()]
         elif self.action in ["update", "partial_update", "destroy"]:
-            perms = [IsAuthenticated, IsCourseOwnerOrStaff]
+            # Only course owner or staff can edit/delete
+            return [IsAuthenticated, IsCourseOwnerOrStaff()]
         else:
-            perms = [IsAuthenticated]
-
-        return [p() for p in perms]
+            # Default: authenticated + staff
+            return [IsAdminOrReadOnly()]
 
     def perform_create(self, serializer):
-        # Attach owner when creating
         serializer.save(owner=self.request.user)
-
 
 from django.http import JsonResponse
 
 def health(request):
     return JsonResponse({"status": "ok"})
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import UserRegistrationSerializer
+
+class RegisterView(APIView):
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'message': 'User created successfully',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                },
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# Add to imports
+from .models import Enrollment
+from .serializers import EnrollmentSerializer
+from .permissions import IsEnrollmentOwner, IsStudentOwnerOrStaff
+
+# Add this ViewSet (before CourseViewSet)
+class EnrollmentViewSet(viewsets.ModelViewSet):
+    queryset = Enrollment.objects.select_related('student__owner', 'course').all()
+    serializer_class = EnrollmentSerializer
+    permission_classes = [IsAuthenticated, IsEnrollmentOwner]  # ← FIXED
+
+    def get_serializer_class(self):
+        if self.action in ['create']:
+            return EnrollmentCreateSerializer  # Simplified for enrollment
+        return EnrollmentSerializer
+
+    def perform_create(self, serializer):
+        # Auto-set student from request (for simplicity)
+        student_id = self.request.data.get('student')
+        student = Student.objects.get(id=student_id)
+        serializer.save(student=student)

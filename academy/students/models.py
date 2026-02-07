@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-from django.contrib.auth.models import User  # Import User model
 
 class Student(models.Model):
     owner = models.ForeignKey(
@@ -9,29 +8,20 @@ class Student(models.Model):
         related_name="students",
         default=1,
     )
-        
     name = models.CharField(max_length=100)
     age = models.IntegerField()
     email = models.EmailField(unique=True)
-    course = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
-    # Add this link to the User
-    # created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-
     def __str__(self):
         return self.name
-
-from django.conf import settings
-from django.db import models
-
 
 class Course(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="courses",
-        null=True,  # for existing data; you can tighten later
+        null=True,
         blank=True,
     )
     title = models.CharField(max_length=200)
@@ -42,3 +32,23 @@ class Course(models.Model):
 
     def __str__(self):
         return self.title
+
+class Enrollment(models.Model):
+    student = models.ForeignKey(
+        Student, 
+        on_delete=models.CASCADE, 
+        related_name='enrollments'  # ✅ FIXED: This creates Student.enrollments
+    )
+    course = models.ForeignKey(
+        Course, 
+        on_delete=models.CASCADE, 
+        related_name='enrollments'  # ✅ Creates Course.enrollments
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ['student', 'course']
+
+    def __str__(self):
+        return f"{self.student.name} → {self.course.title}"

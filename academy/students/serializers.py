@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student
+from .models import Enrollment, Student
 
 # class StudentSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -169,3 +169,45 @@ class CourseSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Price cannot be negative.")
         return value
+
+
+from rest_framework import serializers
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password2 = serializers.CharField(write_only=True, required=True)
+    
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'password2')
+    
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError("Passwords don't match!")
+        return attrs
+    
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        user = User.objects.create_user(**validated_data)
+        return user
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+
+# Add to end of serializers.py
+class EnrollmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    
+    class Meta:
+        model = Enrollment
+        fields = ['id', 'student', 'course', 'student_name', 'course_title', 'enrolled_at', 'is_active']
+        read_only_fields = ['enrolled_at']
+
+class EnrollmentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Enrollment
+        fields = ['student', 'course']

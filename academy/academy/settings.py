@@ -35,6 +35,7 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
 # Application definition
 
 INSTALLED_APPS = [
+    'students', 
     'channels',
     "django.contrib.admin",
     "django.contrib.auth",
@@ -45,7 +46,6 @@ INSTALLED_APPS = [
     "corsheaders",
     'rest_framework',
     'rest_framework.authtoken',
-    'students', 
     'django_filters',     
 ]
 
@@ -148,6 +148,13 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Serve admin static in Docker (temporary)
+if 'frontend' not in str(BASE_DIR):  # Backend only
+    STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Admin URLs accessible
+ADMIN_URL = 'admin/'
 
 
 

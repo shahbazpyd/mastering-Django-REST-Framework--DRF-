@@ -2,13 +2,15 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from students.views_api import StudentListCreateAPIView, StudentListCreateGenericAPIView
-from .views import StudentDetailAPIView, StudentListAPIView, StudentViewSet, student_detail, student_list, TaskStatusAPIView, CourseViewSet
+from .views import EnrollmentViewSet, StudentDetailAPIView, StudentListAPIView, StudentViewSet, student_detail, student_list, TaskStatusAPIView, CourseViewSet
 from .views import health
+from . import views
 
 # Create a router and register our ViewSet
 router = DefaultRouter()
 router.register(r'viewset-students', StudentViewSet, basename='student')
 router.register("courses", CourseViewSet, basename="courses")
+router.register('enrollments', EnrollmentViewSet, basename='enrollment')
 
 
 urlpatterns = [
@@ -31,6 +33,8 @@ urlpatterns = [
 
     path("students-api-view/", StudentListCreateAPIView.as_view(), name="students-api-view"),
     path("students-generic/", StudentListCreateGenericAPIView.as_view(), name="students-generic"),
+
+    path('register/', views.RegisterView.as_view(), name='register'),
     
 ]
 urlpatterns += router.urls

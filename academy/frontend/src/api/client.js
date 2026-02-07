@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: '/api',  // Localhost proxy to Django
+const apiClient = axios.create({
+  baseURL: '/api',  // Django: /api/ + students.urls
 });
 
-// Add token to requests
-api.interceptors.request.use(config => {
+// JWT Token Interceptor
+apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -14,11 +14,20 @@ api.interceptors.request.use(config => {
 });
 
 export const authAPI = {
-  login: (data) => api.post('token/', data),
+  // JWT expects: {username, password}
+  login: (data) => apiClient.post('token/', data),
+  
+  // Custom register endpoint
+  register: (data) => apiClient.post('register/', data),
 };
 
 export const studentsAPI = {
-  list: (params = {}) => api.get('students/', { params }),
+  // Router: /api/viewset-students/ (auto-generated)
+  list: (params = {}) => apiClient.get('viewset-students/', { params }),
 };
 
-export default api;
+export const coursesAPI = {
+  list: (params = {}) => apiClient.get('courses/', { params }),
+  retrieve: (id) => apiClient.get(`courses/${id}/`),
+};
+export default apiClient;

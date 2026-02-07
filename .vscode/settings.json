@@ -1,11 +1,21 @@
 {
-    "sqltools.useNodeRuntime": true,
-    "sqltools.connections": [
-        {
-            "previewLimit": 50,
-            "driver": "SQLite",
-            "name": "mastering_django_db2",
-            "database": "${workspaceFolder:mastering-Django-REST-Framework--DRF-}/academy/masterdrf_db.sqlite3"
-        }
-    ]
+  "sqltools.useNodeRuntime": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "mastering_django_db2",
+      "database": "${workspaceFolder:mastering-Django-REST-Framework--DRF-}/academy/masterdrf_db.sqlite3"
+    },
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "Academy DB",
+      "database": "academy",
+      "username": "academy"
+    }
+  ]
 }
